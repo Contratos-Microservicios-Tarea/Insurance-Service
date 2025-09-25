@@ -10,7 +10,7 @@ COPY pom.xml .
 COPY src ./src
 
 # Compila el proyecto y crea el JAR ejecutable.
-RUN mvn clean install -DskipTests
+RUN mvn clean install 
 
 # ETAPA 2: Crear la imagen final
 FROM eclipse-temurin:21-jre-jammy
