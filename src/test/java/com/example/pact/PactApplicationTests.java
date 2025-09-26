@@ -8,6 +8,7 @@ import au.com.dius.pact.consumer.junit5.PactTestFor;
 import au.com.dius.pact.core.model.V4Pact;
 import au.com.dius.pact.core.model.annotations.Pact;
 import com.example.MedicoApp.dto.LicenceDto;
+import com.example.MedicoApp.dto.VerifyResponseDto;
 import com.example.MedicoApp.service.LicensesService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,65 +32,60 @@ class InsurerPactConsumerTest {
     private LicensesService licensesService;
 
 
-    // 🔹 obtener licencias por paciente
     @Pact(consumer = "Validador-Aseguradora")
-    public V4Pact getLicensesForPatient(PactDslWithProvider builder) {
-        PactDslJsonBody license = new PactDslJsonBody()
-                .stringType("folio", "L-1001")
-                .stringValue("patientId", "11111111-1")
-                .stringValue("doctorId", "D-123")
-                .stringType("diagnosis")
-                .date("startDate", "yyyy-MM-dd")
-                .integerType("days", 7)
+    public V4Pact verifyLicenseValid(PactDslWithProvider builder) {
+        PactDslJsonBody response = new PactDslJsonBody()
+                .stringValue("folio", "L-1001")
+                .booleanValue("valid", true)
                 .stringValue("status", "issued");
 
         return builder
-                .given("patient 11111111-1 has issued license folio L-1001")
-                .uponReceiving("get licenses for patient")
-                .path("/licenses")
-                .query("patientId=11111111-1")
+                .given("folio L-1001 exists and is issued")
+                .uponReceiving("verify valid license folio")
+                .path("/licenses/L-1001/verify")
                 .method("GET")
                 .willRespondWith()
                 .status(200)
                 .headers(Map.of("Content-Type", "application/json"))
-                .body((license))
+                .body(response)
                 .toPact(V4Pact.class);
     }
 
     @Test
-    @PactTestFor(pactMethod = "getLicensesForPatient")
-    void testGetLicensesForPatient() {
-        Mono<List<LicenceDto>> result = licensesService.getLicenciasByPaciente("11111111-1");
-        List<LicenceDto> licenses = result.block();
-        assertNotNull(licenses);
-        assertFalse(licenses.isEmpty());
+    @PactTestFor(pactMethod = "verifyLicenseValid")
+    void testVerifyLicenciaValid() {
+        VerifyResponseDto response = licensesService.verifyLicencia("L-1001");
+        assertNotNull(response);
+        assertEquals(true, response.valid());
     }
 
 
-    // 🔹 obtener licencias por paciente que no tiene licencia
-    @Pact(provider = "Licencias", consumer = "Validador-Aseguradora")
-    public V4Pact getLicensesForPatientWithoutLicense(PactDslWithProvider builder) {
-        PactDslJsonArray emptyArray = new PactDslJsonArray();
+
+    @Pact(consumer = "Validador-Aseguradora")
+    public V4Pact verifyLicenseInvalid(PactDslWithProvider builder) {
+        PactDslJsonBody response = new PactDslJsonBody()
+                .stringValue("folio", "L-9999")
+                .booleanValue("valid", false)
+                .stringValue("status", "not_found");
 
         return builder
-                .given("patient 22222222-2 has no licenses")
-                .uponReceiving("get licenses for patient without licenses")
-                .path("/licenses")
-                .query("patientId=22222222-2")
+                .given("folio L-9999 does not exist")
+                .uponReceiving("verify invalid license folio")
+                .path("/licenses/L-9999/verify")
                 .method("GET")
                 .willRespondWith()
                 .status(200)
                 .headers(Map.of("Content-Type", "application/json"))
-                .body(emptyArray)
+                .body(response)
                 .toPact(V4Pact.class);
     }
 
+
     @Test
-    @PactTestFor(pactMethod = "getLicensesForPatientWithoutLicense")
-    void testGetLicensesForPatientWithoutLicense() {
-        Mono<List<LicenceDto>> result = licensesService.getLicenciasByPaciente("22222222-2");
-        List<LicenceDto> licenses = result.block();
-        assertNotNull(licenses);
-        assertTrue(licenses.isEmpty());
+    @PactTestFor(pactMethod = "verifyLicenseInvalid")
+    void testVerifyLicenciaInvalid() {
+        VerifyResponseDto response = licensesService.verifyLicencia("L-9999");
+        assertNotNull(response);
+        assertEquals(false, response.valid());
     }
 }

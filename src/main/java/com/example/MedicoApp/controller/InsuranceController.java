@@ -30,8 +30,4 @@ public class InsuranceController {
         return insuranceService.getLicenciasByPaciente(patientId) ;
     }
 
-    @GetMapping("")
-    protected final String test() {
-        return "test";
-    }
 }
